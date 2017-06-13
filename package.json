@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/briancsparks/serverassist#readme",
   "dependencies": {
+    "mongodb": "^2.2.28",
     "sgsg": "^0.9.4"
   }
 }
