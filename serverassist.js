@@ -1,10 +1,10 @@
 
 /**
- *
+ *  The server-assist package for Node.js apps.
  */
 const sg                  = require('sgsg');
 const _                   = sg._;
-var MongoClient           = require('mongodb').MongoClient;
+const MongoClient         = require('mongodb').MongoClient;
 const clusterLib          = require('js-cluster');
 
 var   ServiceList         = clusterLib.ServiceList;
