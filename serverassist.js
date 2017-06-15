@@ -31,6 +31,10 @@ var myIp = lib.myIp = function() {
   return process.env.SERVERASSIST_MY_IP || '127.0.0.1';
 };
 
+lib.isLocalWorkstation = function() {
+  return (myIp() === '127.0.0.1');
+};
+
 var myColor = lib.myColor = function() {
   return process.env.SERVERASSIST_COLOR || 'green';
 };
