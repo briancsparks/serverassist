@@ -72,18 +72,31 @@ lib.registerServiceApp = function(argv, context, callback_) {
   const rewrite           = argvGet(argv, 'rewrite');
 
   return MongoClient.connect(mongoHost(), function(err, db) {
-    if (err) { return sg.die(err, callback, 'registerService.connect'); }
+    if (err) { return sg.die(err, callback, 'registerServiceApp.connect'); }
 
     var appsDb = db.collection('apps');
 
-    var item  = {appId, mount};
-    sg.setOnn(item, 'rewrite', rewrite);
+    return sg.__run([function(next) {
 
-    return appsDb.updateOne({appId}, item, {upsert:true}, function(err, result) {
-      if (err) { return sg.die(err, callback, 'registerService.updateOne'); }
+      // Do not change an already-vetted entry
+      return appsDb.find({appId, vetted:true}).limit(1).each((err, app) => {
+        if (err) { return sg.die(err, callback, 'registerServiceApp.findVetted'); }
+        if (app) { return callback(); }
 
-      setTimeout(()=>{ db.close(); }, 1000);
-      return callback(err, result);
+        /* otherwise */
+        return next();
+      });
+
+    }], function() {
+      var item  = {appId, mount};
+      sg.setOnn(item, 'rewrite', rewrite);
+
+      return appsDb.updateOne({appId}, item, {upsert:true}, function(err, result) {
+        if (err) { return sg.die(err, callback, 'registerService.updateOne'); }
+
+        setTimeout(()=>{ db.close(); }, 1000);
+        return callback(err, result);
+      });
     });
   });
 };
