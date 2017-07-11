@@ -12,6 +12,7 @@ var helpers             = require('./helpers');
 var ARGV                = sg.ARGV();
 var setOnn              = sg.setOnn;
 var argvGet             = sg.argvGet;
+var argvExtract         = sg.argvExtract;
 var verbose             = sg.verbose;
 var everbose            = sg.everbose;;
 var findObject          = helpers.findObject;
@@ -36,15 +37,14 @@ lib.upsertProject = function(argv, context, callback) {
 
     var projectsDb      = db.collection('projects');
 
-    var topNamespace    = (argvGet(argv, 'top-namespace,top-ns,ns') || 'SA').toUpperCase();
+    var topNamespace    = (argvExtract(argv, 'top-namespace,top-ns,ns') || 'SA').toUpperCase();
     var projectId       = argvGet(argv, 'project-id,project');
 
     var item = {};
 
-    sg.setOnn(item, '$set.projectId',     projectId);
-    sg.setOnn(item, '$set.upstream',      argvGet(argv, 'upstream'));
-    sg.setOnn(item, '$set.uriBase',       argvGet(argv, 'uri-base,base'));
-    sg.setOnn(item, '$set.uriTestBase',   argvGet(argv, 'uri-test-base,test-base'));
+    _.each(argv, (value, key) => {
+      sg.setOnn(item, ['$set', sg.toCamelCase(key)], sg.smartValue(value));
+    });
 
     everbose(2, `Upserting project ${projectId}`);
     return projectsDb.updateOne({projectId}, item, {upsert:true}, function(err, result_) {

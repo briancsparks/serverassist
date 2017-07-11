@@ -32,8 +32,9 @@ var upsertOnePartner = function(argv, context, callback) {
 
     var item = {};
 
-    setOnn(item, '$set.projectId',    argvGet(argv, 'project-id,project'));
-    setOnn(item, '$set.serviceFqdn',  argvGet(argv, 'service-fqdn,service'));
+    _.each(argv, (value, key) => {
+      sg.setOnn(item, ['$set', sg.toCamelCase(key)], sg.smartValue(value));
+    });
 
     everbose(2, `Upserting partner: ${partnerId}`);
     return partnersDb.updateOne({partnerId}, item, {upsert:true}, function(err, result) {

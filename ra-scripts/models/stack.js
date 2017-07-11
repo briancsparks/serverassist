@@ -28,15 +28,21 @@ lib.upsertStack = function(argv_, context, callback) {
 
     var stacksDb      = db.collection('stacks');
     var stack         = argvGet(argv, 'stack');
+    var color         = argvGet(argv, 'color');
+    var projectId     = argvGet(argv, 'project-id');
+
+    if (!stack)         { return sg.die(`Must provide --stack`, callback, 'upsertStack'); }
+    if (!color)         { return sg.die(`Must provide --color`, callback, 'upsertStack'); }
+    if (!projectId)     { return sg.die(`Must provide --project-id`, callback, 'upsertStack'); }
 
     var item = {};
     _.each(argv, (value, key) => {
       sg.setOnn(item, ['$set', sg.toCamelCase(key)], sg.smartValue(value));
     });
 
-    everbose(2, `Upserting stack ${stack}`);
-    return stacksDb.updateOne({stack}, item, {upsert:true}, function(err, result) {
-      console.log(err, result.result);
+    everbose(2, `Upserting stack ${stack},${color},${projectId}`);
+    return stacksDb.updateOne({stack, color, projectId}, item, {upsert:true}, function(err, result) {
+      //console.log(err, result.result);
 
       db.close();
       return callback.apply(this, arguments);
