@@ -33,7 +33,7 @@ lib.getIds = function(argv, context, callback_) {
   if (params.projectId)     { result.projectId  = params.projectId; }
   if (params.version)       { result.version    = params.version; }
 
-  if (result.version) {
+  if (result.version && _.isString(result.version)) {
     result.version = result.version.replace(/^v/ig, '');
   }
 
