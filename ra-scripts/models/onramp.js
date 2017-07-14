@@ -44,7 +44,6 @@ lib.upsertOnramp = function(argv_, context, callback) {
 
     everbose(2, `Upserting onramp ${internalName}`);
     return onrampsDb.updateOne({internalName, projectId}, item, {upsert:true}, function(err, result) {
-      console.log(err, result.result);
 
       db.close();
       return callback.apply(this, arguments);
