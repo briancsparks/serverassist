@@ -20,7 +20,7 @@ lib.findObject = function(argv_, context, callback) {
 
   var cName   = sg.argvExtract(argv, 'collection-name,co');
   var keyName = sg.argvExtract(argv, 'key-name,key')        || cName.replace(/s$/i, '')+'Id';
-  var itemId  = sg.argvExtract(argv, 'id');
+  var itemId  = sg.argvExtract(argv, 'id')                  || sg.argvExtract(argv, keyName);;
 
   if (!cName)  { return sg.die('Must provide --collection-name', callback); }
   if (!itemId) { return sg.die('Must provide --id', callback); }
@@ -30,6 +30,35 @@ lib.findObject = function(argv_, context, callback) {
 
     var itemDb  = db.collection(cName);
     const query = sg.kv(keyName, itemId);
+
+    return itemDb.find(query).limit(1).next(function(err, doc) {
+      closeDb(db);
+
+      if (err)  { return sg.die(err, callback, 'findObject.find.'+cName); }
+      if (doc)  { return callback(null, doc); }
+
+      /* otherwise */
+      return callback(null, null);
+    });
+  });
+};
+
+lib.queryObject = function(argv_, context, callback) {
+  var argv      = sg.deepCopy(argv_);
+
+  var cName     = sg.argvExtract(argv, 'collection-name,co');
+  var keyName   = sg.argvExtract(argv, 'key-name,key')        || cName.replace(/s$/i, '')+'Id';
+  var itemId    = sg.argvExtract(argv, 'id')                  || sg.argvExtract(argv, keyName);;
+
+  const query   = _.extend(sg.kv(keyName, itemId), sg.argvExtract(argv, 'query'));
+
+  if (!cName)  { return sg.die('Must provide --collection-name', callback); }
+  if (!itemId) { return sg.die('Must provide --id', callback); }
+
+  return MongoClient.connect(mongoHost, function(err, db) {
+    if (err) { return sg.die(err, callback, 'findObject.MongoClient.connect.'+cName); }
+
+    var itemDb  = db.collection(cName);
 
     return itemDb.find(query).limit(1).next(function(err, doc) {
       closeDb(db);

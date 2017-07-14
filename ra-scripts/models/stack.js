@@ -14,7 +14,8 @@ var setOnn              = sg.setOnn;
 var argvGet             = sg.argvGet;
 var verbose             = sg.verbose;
 var everbose            = sg.everbose;;
-var findObject          = helpers.findObject;
+var queryObject         = helpers.queryObject;
+const closeDb           = helpers.closeDb;
 
 var mongoHost           = serverassist.mongoHost();
 
@@ -53,8 +54,13 @@ lib.upsertStack = function(argv_, context, callback) {
 lib.findStack = function(argv_, context, callback) {
   var argv      = sg.extend(argv_);
   var stack     = sg.extract(argv, 'id')  || sg.extract(argv, 'stack');
+  var color     = sg.extract(argv, 'color');
+  var projectId = sg.extract(argv, 'project-id,project');
+  var keyName   = 'stack';
 
-  return findObject(sg.extend(argv, {co:'stacks', stack}), context, function(err, stack) {
+  const query   = {projectId,color};
+
+  return queryObject(sg.extend(argv, {co:'stacks', stack, keyName, query}), context, function(err, stack) {
     return callback.apply(this, arguments);
   });
 };
