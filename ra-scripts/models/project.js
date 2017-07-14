@@ -39,12 +39,16 @@ lib.upsertProject = function(argv, context, callback) {
 
     var topNamespace    = (argvExtract(argv, 'top-namespace,top-ns,ns') || 'SA').toUpperCase();
     var projectId       = argvGet(argv, 'project-id,project');
+    var deployArgs      = argvExtract(argv, 'deploy-args');
 
     var item = {};
 
     _.each(argv, (value, key) => {
       sg.setOnn(item, ['$set', sg.toCamelCase(key)], sg.smartValue(value));
     });
+
+    deployArgs = deployArgs ? deployArgs.split(',') : deployArgs;
+    sg.setOnn(item, ['$set', 'deployArgs'], deployArgs);
 
     everbose(2, `Upserting project ${projectId}`);
     return projectsDb.updateOne({projectId}, item, {upsert:true}, function(err, result_) {
