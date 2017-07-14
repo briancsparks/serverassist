@@ -28,9 +28,9 @@ _.each(require('./lib/sa-server'), (value, key) => {
 });
 
 // ----- Bring in specific helpers -----
-lib.mongoHost             = helpers.mongoHost;
-lib.myIp                  = helpers.myIp;
-lib.isLocalWorkstation    = helpers.isLocalWorkstation;
+_.each(helpers, (value, key) => {
+  lib[key] = value;
+});
 
 
 // ----- Export -----
