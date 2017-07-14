@@ -41,13 +41,13 @@ const showRouting = lib.showRouting = function(argv, context, callback) {
 
       var result = {};
       if (stackName) {
-        result[stackName] = startResult;
+        result[stackName] = startResult.slice();
       }
 
       _.each(stacks, function(stack) {
         if (!stack.color || !(stack.color in colorIndex)) { return; }
 
-        result[stack.stack] = result[stack.stack] || startResult;
+        result[stack.stack] = result[stack.stack] || startResult.slice();
         result[stack.stack][colorIndex[stack.color]] = stack.state;
       });
 
