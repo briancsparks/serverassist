@@ -1,0 +1,32 @@
+#!/bin/bash -e
+
+#
+# Generates a root cert for a project
+#
+
+eval "$(cli-shezargs $@)"
+
+[[ -n $project ]] || die "Must provide --project="
+
+aws s3 ls s3://sa-system-storage/${project}/secrets/deploy/${project}-data-key.json || die "No data-key."
+
+mkdir -p ~/stmp
+chmod og=rwx ~/stmp
+
+cd ~/stmp
+
+openssl genrsa -out ${project}_root_server_ca.key 4096
+openssl req -new -key ${project}_root_server_ca.key -out ${project}_root_server_ca.csr -subj "$($scripts_dir/subj 'Client Solutions' "SA Project ${project} Root Server CA")"
+
+${scripts_dir}/../pull-secret serverassist_root_server_ca.crt
+${scripts_dir}/../pull-secret serverassist_root_server_ca.key
+
+openssl x509 -req -days 7000 -in ${project}_root_server_ca.csr -CA serverassist_root_server_ca.crt -CAkey serverassist_root_server_ca.key -set_serial 01 -out ${project}_root_server_ca.crt
+
+rm -f serverassist_root_server_ca.crt
+rm -f serverassist_root_server_ca.key
+
+${scripts_dir}/../push-secret --project="${project}" ${project}_root_server_ca.key
+${scripts_dir}/../push-secret --project="${project}" ${project}_root_server_ca.csr
+${scripts_dir}/../push-secret --project="${project}" ${project}_root_server_ca.crt
+

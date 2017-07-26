@@ -1,0 +1,20 @@
+#!/bin/bash -e
+
+eval "$(cli-shezargs $@)"
+
+[[ -z $project  ]] && die "Must provide --project="
+[[ -z $area     ]] && area="deploy"
+
+# Make sure we have a secure place to work
+mkdir -p ~/stmp && cd $_
+chmod og-rwx ~/stmp
+
+aws kms generate-data-key --key-id alias/serverassist-system-deploy --key-spec AES_256 | tee ${project}-full-data-key.json | jq '{KeyId: .KeyId, CiphertextBlob: .CiphertextBlob}' > ${project}-data-key.json
+cat ${project}-full-data-key.json | underscore print --color
+cat ${project}-data-key.json | underscore print --color
+
+aws s3 cp ${project}-data-key.json "s3://sa-system-storage/${project}/secrets/${area}/${project}-data-key.json"
+
+rm -f ${project}-full-data-key.json
+rm -f ${project}-data-key.json
+

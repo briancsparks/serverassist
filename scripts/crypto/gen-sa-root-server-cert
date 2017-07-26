@@ -1,0 +1,20 @@
+#!/bin/bash -e
+
+eval "$(cli-shezargs $@)"
+
+#
+# Generates the end-all, be-all root-level cert for serverassist
+#
+
+mkdir -p ~/stmp
+chmod og=rwx ~/stmp
+
+cd ~/stmp
+
+openssl genrsa -out serverassist_root_server_ca.key 4096
+openssl req -new -x509 -days 7399 -key serverassist_root_server_ca.key -out serverassist_root_server_ca.crt -subj "$($scripts_dir/subj 'Client Solutions' 'ServerAssist Root Server CA' )"
+
+${scripts_dir}/../push-secret serverassist_root_server_ca.key
+${scripts_dir}/../push-secret serverassist_root_server_ca.crt
+
+

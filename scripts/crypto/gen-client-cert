@@ -1,0 +1,62 @@
+#!/bin/bash -e
+
+#
+# Generates a client cert
+#
+
+eval "$(cli-shezargs $@)"
+
+[[ -n $project    ]] || die "Must provide --project="
+[[ -n $email      ]] || die "Must provide --email="
+
+[[ -z $auth_name  ]] && auth_name="$(echo $email | cut -d'@' -f1 | sed 's/[^a-zA-Z0-9]/_/g')"
+
+aws s3 ls s3://sa-system-storage/${project}/secrets/deploy/${project}-data-key.json || die "No data-key."
+
+mkdir -p ~/stmp
+chmod og=rwx ~/stmp
+
+cd ~/stmp
+
+# Get key, if we do not already have it
+if ! [[ -f ${project}-data-key.json ]]; then
+  aws s3 cp "s3://sa-system-storage/${project}/secrets/deploy/${project}-data-key.json" ./
+  created_data_key="1"
+fi
+
+# The user should have given us a csr file. If not, generate one for them
+user_csr="1"
+if ! [[ -f "${auth_name}_${project}_client.csr" ]]; then
+  openssl genrsa -out "${auth_name}_${project}_client.key" 2048
+  openssl req -new -key "${auth_name}_${project}_client.key" -out "${auth_name}_${project}_client.csr" -subj "$($scripts_dir/subj 'Client Solutions' "${email}")"
+  unset user_csr
+fi
+
+${scripts_dir}/../pull-secret --project="${project}" ${project}_root_client_ca.crt
+${scripts_dir}/../pull-secret --project="${project}" ${project}_root_client_ca.key
+
+openssl x509 -req -days 375 -in "${auth_name}_${project}_client.csr" -CA ${project}_root_client_ca.crt -CAkey ${project}_root_client_ca.key -set_serial 01 -out "${auth_name}_${project}_client.crt"
+
+rm -f ${project}_root_client_ca.crt
+rm -f ${project}_root_client_ca.key
+
+# Make a PKCS version for browsers
+if [[ -f "${auth_name}_${project}_client.key" ]]; then
+  # Cannot generate PKCS12 without the key
+  openssl pkcs12 -export -clcerts -in "${auth_name}_${project}_client.crt" -inkey "${auth_name}_${project}_client.key" -passout "pass:" -out "${auth_name}_${project}_client.p12"
+fi
+
+[[ -f "${auth_name}_${project}_client.key" ]] && ${scripts_dir}/../push-secret --project="${project}" --area="clients/${auth_name}" "${auth_name}_${project}_client.key"
+[[ -f "${auth_name}_${project}_client.csr" ]] && ${scripts_dir}/../push-secret --project="${project}" --area="clients/${auth_name}" "${auth_name}_${project}_client.csr"
+[[ -f "${auth_name}_${project}_client.crt" ]] && ${scripts_dir}/../push-secret --project="${project}" --area="clients/${auth_name}" "${auth_name}_${project}_client.crt"
+[[ -f "${auth_name}_${project}_client.p12" ]] && ${scripts_dir}/../push-secret --project="${project}" --area="clients/${auth_name}" "${auth_name}_${project}_client.p12"
+
+[[ -n ${created_data_key} ]] && rm ~/stmp/${project}-data-key.json
+
+
+
+
+# openssl req -new -key ~/.ssh/id_rsa -out auth_name.csr -subj '/C=US...'
+# ...
+# openssl pkcs12 -export -clcerts -in client.crt -inkey ~/.ssh/id_rsa -passout "pass:" -out client.p12
+

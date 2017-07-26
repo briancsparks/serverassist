@@ -1,0 +1,11 @@
+#!/bin/bash -e
+
+orig_args="$@"
+
+eval "$(cli-shezargs $@)"
+
+script="$1"
+shift
+
+test -x "$scripts_dir/crypto/$script" && "$scripts_dir/crypto/$script" "$orig_args"
+
