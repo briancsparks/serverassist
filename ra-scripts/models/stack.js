@@ -12,6 +12,7 @@ var helpers             = require('./helpers');
 var ARGV                = sg.ARGV();
 var setOnn              = sg.setOnn;
 var argvGet             = sg.argvGet;
+var argvExtract         = sg.argvExtract;
 var verbose             = sg.verbose;
 var everbose            = sg.everbose;;
 var queryObject         = helpers.queryObject;
@@ -21,7 +22,7 @@ var mongoHost           = serverassist.mongoHost();
 
 var lib = {};
 
-lib.upsertStack = function(argv_, context, callback) {
+var upsertStack = lib.upsertStack = function(argv_, context, callback) {
   var argv = sg.deepCopy(argv_);
 
   return MongoClient.connect(mongoHost, function(err, db) {
@@ -41,12 +42,73 @@ lib.upsertStack = function(argv_, context, callback) {
       sg.setOnn(item, ['$set', sg.toCamelCase(key)], sg.smartValue(value));
     });
 
-    everbose(2, `Upserting stack ${stack},${color},${projectId}`);
+    everbose(2, `Upserting project ${projectId}, stack: ${color}-${stack}`);
     return stacksDb.updateOne({stack, color, projectId}, item, {upsert:true}, function(err, result) {
       //console.log(err, result.result);
 
       db.close();
       return callback.apply(this, arguments);
+    });
+  });
+};
+
+lib.seedGreenBlueStacks = function(argv_, context, callback) {
+  var argv = sg.deepCopy(argv_);
+
+  return MongoClient.connect(mongoHost, function(err, db) {
+    const colors      = (argvGet(argv, 'colors,color')          || 'green,blue,teal,yellow').split(',');
+    const stacks      = (argvGet(argv, 'stacks,stack')          || 'cluster,test,pub').split(',');
+    const state       = argvGet(argv, 'state')                  || 'gone';
+    const projectId   = argvGet(argv, 'project-id,project');
+    const domainName  = argvGet(argv, 'domain-name,domain');
+
+    if (!domainName)    { return sg.die(`Must provide --domain-name`, callback, 'upsertStack'); }
+    if (!projectId)     { return sg.die(`Must provide --project-id`, callback, 'upsertStack'); }
+
+    var result = {};
+
+    return sg.__each(stacks, (stack, next) => {
+      return sg.__each(colors, (color, next) => {
+        const fqdn      = `${color}-${stack}.${domainName}`;
+        return upsertStack({stack, color, projectId, fqdn, state}, context, function(err, r) {
+          if (err)            { console.error('err upserting', err);  return; }
+          if (!r.result.ok)   { console.error('upserting !ok', err);  return; }
+
+          setOnn(result, [stack, color], sg.kv('ok', r.result.ok));
+          return next();
+        });
+      }, next);
+    }, function() {
+      db.close();
+      return callback(null, result);
+    });
+  });
+};
+
+lib.seedJustXStacks = function(argv_, context, callback) {
+  var argv = sg.deepCopy(argv_);
+
+  return MongoClient.connect(mongoHost, function(err, db) {
+    const stacksDb    = db.collection('stacks');
+
+    const stack       = argvGet(argv, 'stack')               || 'pub';
+    const projectId   = argvGet(argv, 'project-id,project');
+    const domainName  = argvExtract(argv, 'domain-name,domain');
+
+    if (!domainName)    { return sg.die(`Must provide --domain-name`, callback, 'upsertStack'); }
+    if (!projectId)     { return sg.die(`Must provide --project-id`, callback, 'upsertStack'); }
+
+    var item = {};
+    _.each(argv, (value, key) => {
+      sg.setOnn(item, ['$set', sg.toCamelCase(key)], sg.smartValue(value));
+    });
+
+    setOnn(item, '$set.fqdn', `${stack}.${domainName}`);
+
+    var result = {};
+    return stacksDb.updateOne({stack, projectId}, item, {upsert:true}, function(err, result) {
+      db.close();
+      return callback(err, result);
     });
   });
 };
