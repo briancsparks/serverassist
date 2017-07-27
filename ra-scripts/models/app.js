@@ -11,8 +11,9 @@ var helpers             = require('./helpers');
 var ARGV                = sg.ARGV();
 var setOnn              = sg.setOnn;
 var argvGet             = sg.argvGet;
+var argvExtract         = sg.argvExtract;
 var verbose             = sg.verbose;
-var everbose            = sg.everbose;;
+var everbose            = sg.everbose;
 var findObject          = helpers.findObject;
 
 var mongoHost           = serverassist.mongoHost();
@@ -27,14 +28,19 @@ lib.upsertApp = function(argv_, context, callback) {
 
     var appsDb = db.collection('apps');
 
-    var appId  = argvGet(argv, 'app-id,app');
-    var item   = { $set: {appId} };
+    var appId  = argvExtract(argv, 'app-id,app');
+    var stack  = argvExtract(argv, 'stacks,stack');
+    var item   = {};
+
+    sg.setOnn(item, '$set.appId',       sg.smartValue(appId));
+    sg.setOnn(item, '$addToSet.stacks', stack ? {$each:stack.split(',')} : null);
 
     _.each(argv, (value, key) => {
       sg.setOnn(item, ['$set', sg.toCamelCase(key)], sg.smartValue(value));
     });
 
-    everbose(2, `Upserting app: ${appId}`);
+    everbose(3, `Upserting app: ${appId}`);
+    everbose(4, `Upserting app: ${appId}`, item);
     return appsDb.updateOne({appId}, item, {upsert:true}, function(err, result) {
       db.close();
       return callback.apply(this, arguments);

@@ -34,16 +34,23 @@ var upsertStack = lib.upsertStack = function(argv_, context, callback) {
     var projectId     = argvGet(argv, 'project-id');
 
     if (!stack)         { return sg.die(`Must provide --stack`, callback, 'upsertStack'); }
-    if (!color)         { return sg.die(`Must provide --color`, callback, 'upsertStack'); }
     if (!projectId)     { return sg.die(`Must provide --project-id`, callback, 'upsertStack'); }
+
+    var query = {stack, projectId};
+    sg.setOnn(query, 'color', color);
 
     var item = {};
     _.each(argv, (value, key) => {
       sg.setOnn(item, ['$set', sg.toCamelCase(key)], sg.smartValue(value));
     });
 
+    // Including color means one of the instance objects, not the larger stack object
+    if (!query.color) {
+      query.color = {$not:{$exists:true}};
+    }
+
     everbose(2, `Upserting project ${projectId}, stack: ${color}-${stack}`);
-    return stacksDb.updateOne({stack, color, projectId}, item, {upsert:true}, function(err, result) {
+    return stacksDb.updateOne(query, item, {upsert:true}, function(err, result) {
       //console.log(err, result.result);
 
       db.close();
