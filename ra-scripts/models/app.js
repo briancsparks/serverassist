@@ -41,6 +41,7 @@ lib.upsertApp = function(argv_, context, callback) {
 
     everbose(3, `Upserting app: ${appId}`);
     everbose(4, `Upserting app: ${appId}`, item);
+
     return appsDb.updateOne({appId}, item, {upsert:true}, function(err, result) {
       db.close();
       return callback.apply(this, arguments);
