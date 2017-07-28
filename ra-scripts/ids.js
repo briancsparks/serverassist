@@ -15,8 +15,8 @@ lib.getIds = function(argv, context, callback_) {
   const params    = match.params  || {};
 
   const all       = sg.extend(body, query, params);
-console.error({all});
-  var result = {};
+
+  var   result    = {};
 
   if (body.projectId)       { result.projectId  = body.projectId; }
   if (body.partnerId)       { result.partnerId  = body.partnerId; }
@@ -36,6 +36,7 @@ console.error({all});
   if (params.version)       { result.version    = params.version; }
 
   if (all.sessionId)        { result.sessionId  = all.sessionId; }
+  if (all.username)         { result.username   = all.username; }
 
   if (result.version && _.isString(result.version)) {
     result.version = result.version.replace(/^v/ig, '');
