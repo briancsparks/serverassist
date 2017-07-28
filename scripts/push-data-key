@@ -2,6 +2,10 @@
 
 eval "$(cli-shezargs $@)"
 
+#
+# Generate a CMK from AWS' key-manage service kms.
+#
+
 [[ -z $project  ]] && die "Must provide --project="
 [[ -z $area     ]] && area="deploy"
 

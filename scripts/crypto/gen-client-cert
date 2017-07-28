@@ -1,7 +1,22 @@
 #!/bin/bash -e
 
 #
-# Generates a client cert
+# Generates a client certificate.
+#
+#   A client certificate is for HTTP what ssh keys are for SSH. So, using client
+#   certificates (when done properly) is *very* secure. The real issue with
+#   client certificates is (1) generating them is near-impossible for non-tech-savvy
+#   users, and (2) installing them is just as hard. These difficulties are beyond the
+#   scope for this discussion. Suffice it to say that the intended users are full-time
+#   software developers that are used to difficult tasks.
+#
+#   This script does all steps to generate a client-side certificate, but it will
+#   probably never be user as-is, because that would requier users to send their
+#   private key to the server (which they should never do.)
+#
+#   But anyway, these are the steps to generate a client-side certificate that will
+#   belong to only one person, who can be identified by the system -- and it
+#   provides industry-standard encryption.
 #
 
 eval "$(cli-shezargs $@)"

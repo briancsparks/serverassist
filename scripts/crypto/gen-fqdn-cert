@@ -1,3 +1,39 @@
 #!/bin/bash -e
 
+#
+# Generates a single servrer certificate, using that project's intermediate cert
+#
+
+eval "$(cli-shezargs $@)"
+
+[[ -n $project ]] || die "Must provide --project="
+[[ -n $fqdn    ]] || die "Must provide --fqdn="
+
+aws s3 ls s3://sa-system-storage/${project}/secrets/deploy/${project}-data-key.json || die "No data-key."
+
+mkdir -p ~/stmp
+chmod og=rwx ~/stmp
+
+cd ~/stmp
+
+# Generate the key for this servrer
+openssl genrsa -out ${fqdn}.key 2048
+
+# Generate the crt -- Certificate Signing Request
+openssl req -new -key ${fqdn}.key -out ${fqdn}.csr -subj "$($scripts_dir/subj 'Client Solutions' "${fqdn}")"
+
+
+${scripts_dir}/../pull-secret --project="${project}" ${project}_root_server_ca.key
+${scripts_dir}/../pull-secret --project="${project}" ${project}_root_server_ca.crt
+
+openssl x509 -req -days 7000 -in ${fqdn}.csr -CA ${project}_root_server_ca.crt -CAkey ${project}_root_server_ca.key -set_serial 01 -out ${fqdn}.crt
+
+rm -f ${project}_root_server_ca.key
+rm -f ${project}_root_server_ca.crt
+
+${scripts_dir}/../push-secret --project="${project}" ${fqdn}.key
+${scripts_dir}/../push-secret --project="${project}" ${fqdn}.crt
+${scripts_dir}/../push-secret --project="${project}" ${fqdn}.csr
+
+
 
