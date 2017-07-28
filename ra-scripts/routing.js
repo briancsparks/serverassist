@@ -12,20 +12,66 @@ const helpers                 = require('./models/helpers');
 const argvGet                 = sg.argvGet;
 const mongoHost               = serverassist.mongoHost();
 const closeDb                 = helpers.closeDb;
+const chalk                   = sg.extlibs.chalk;
 
-const colorList  = 'green,blue,teal,yellow';
+const colorList   = 'green,blue,teal,yellow';
 const colorTable  = colorList.split(',');                                                                          // So, colorTable[0] === 'green'
 const colorIndex  = sg.reduce(colorTable, {}, function(m, color, index) { return sg.kv(m, color, index); });       // So, colorIndex.green === 0
 const startResult = _.map(colorTable, function(color, index) { return '-'; });                                     // So, startResult === ['-', '-', '-', '-']
 
 var lib = {};
 
+/**
+ *  The user supplied bad arguments. Let them know whats right.
+ */
+var lpad = sg.lpad;
+sg.prepUsage = function() {
+
+  return mkU();
+  function mkU() {
+
+    var options   = {};
+    var descr     = {};
+    var example   = '';
+
+    var u = function(names, example_, descr_) {
+      var arNames = names.split(',');
+      var primary = arNames[0];
+      var key     = sg.toCamelCase(primary);
+
+      descr[key]      = descr_;
+      options[key]    = _.map(arNames, function(name) { return '--'+name; });
+      example         = _.compact([example, '--'+primary+example_]).join(' ');;
+
+      return names;
+    };
+
+    u.sage = function(what, msg, callback_) {
+      var callback = callback_ || function(){};
+
+      process.stderr.write(chalk.red('Bad '+what+' '+msg)+'\n');
+      process.stderr.write('\nUsage:     '+chalk.bold(example)+'\n\n');
+      _.each(_.keys(options), function(key) {
+        var msg = '  '+lpad(key+': ', 16)+lpad(descr[key], 35)+' (as: '+options[key].join(' or ')+')';
+        process.stderr.write(msg+'\n');
+      });
+
+      return callback(null, {});
+      //return callback('EBAD-'+what.toUpperCase(), {ok:false, what: 'Bad '+what});
+    };
+
+    return u;
+  }
+};
+
 const showRouting = lib.showRouting = function(argv, context, callback) {
 
-  const stackName = argvGet(argv, 'stack');
-  const projectId = argvGet(argv, 'project-id');
+  var   u         = sg.prepUsage();
 
-  if (!projectId) { sg.die(`Need --project-id`, callback, 'setRouting'); }
+  const projectId = argvGet(argv, u('project-id,project', '=sa',     'The project to show.'));
+  const stackName = argvGet(argv, u('stack',              '=test',   'The stack to show.'));
+
+  if (!projectId) { return u.sage('project-id', '', callback); }
 
   return MongoClient.connect(mongoHost, function(err, db) {
     if (err) { return sg.die(err, callback, 'showRouting.MongoClient.connect'); }
@@ -58,9 +104,11 @@ const showRouting = lib.showRouting = function(argv, context, callback) {
 
 const setRouting = lib.setRouting = function(argv, context, callback) {
 
-  const projectId = argvGet(argv, 'project-id');
-  const states    = argvGet(argv, 'states');
-  const stack     = argvGet(argv, 'stack');
+  var   u         = sg.prepUsage();
+
+  const projectId = argvGet(argv, u('project-id,project', '=sa',        'The project to show.'));
+  const stack     = argvGet(argv, u('stack',              '=test',      'The stack to show.'));
+  const states    = argvGet(argv, u('states',             '=main,next', 'New states to set'));
 
   // Can pass in 'next,main,gone...' instead of an individual state
   if (states && projectId && stack) {
@@ -91,7 +139,7 @@ const setRouting = lib.setRouting = function(argv, context, callback) {
   var   state     = argvGet(argv, 'state');
   const color     = argvGet(argv, 'color');
 
-  if (!stack || !color || sg.isnt(state) || !projectId) { sg.die(`Need all of stack: ${stack}, color: ${color}, state: ${state}, project-id: ${projectId}`, callback, 'setRouting'); }
+  if (!stack || !color || sg.isnt(state) || !projectId) { return u.sage('options.', `Need all of 'stack' (${stack}), 'color' (${color}) 'state' (${state}) 'project-id' (${projectId})`, callback); }
 
   state = state || 'gone';
 
