@@ -15,7 +15,7 @@ const argvGet             = sg.argvGet;
 
 var   raLoad;
 
-var lib = {server:{}};
+var lib = {server:{},client:{}};
 
 // ----- Bring in functionality for module develpoers -----
 _.each(require('./lib/sa-module'), (value, key) => {
@@ -25,6 +25,11 @@ _.each(require('./lib/sa-module'), (value, key) => {
 // ----- Bring in helpers for the server-assist-server module -----
 _.each(require('./lib/sa-server'), (value, key) => {
   lib.server[key] = value;
+});
+
+// ----- Bring in helpers for the client module -----
+_.each(require('./lib/client'), (value, key) => {
+  lib.client[key] = value;
 });
 
 // ----- Bring in specific helpers -----
@@ -39,4 +44,3 @@ _.each(lib, (value, key) => {
 });
 
 exports.raScripts = ra.loadScripts(__dirname);
-
