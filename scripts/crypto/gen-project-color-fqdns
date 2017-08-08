@@ -2,14 +2,14 @@
 
 eval "$(cli-shezargs $@)"
 
-[[ -n $project          ]] || die "Need --project="
-[[ -n $domain_name      ]] || die "Need --domain-name="
-[[ -n $test_domain_name ]] || die "Need --test-domain-name="
+[[ -n $project          ]] || die "gpcf: Need --project="
+[[ -n $domain_name      ]] || die "gpcf: Need --domain-name="
+[[ -n $test_domain_name ]] || die "gpcf: Need --test-domain-name="
 
 for stack in cluster test; do
   for color in blue green teal yellow; do
 
-    serverassist-crypto gen-fqdn-cert --project="$project" --fqdn="$color-$stack.$test_domain_name"
+    serverassist-crypto gen-fqdn-cert --project="$project" --fqdn="$color-$stack.$test_domain_name" --domain-name="$domain_name"
 
   done
 done
@@ -17,7 +17,7 @@ done
 for stack in pub; do
   for color in blue green teal yellow; do
 
-    serverassist-crypto gen-fqdn-cert --project="$project" --fqdn="$color-$stack.$domain_name"
+    serverassist-crypto gen-fqdn-cert --project="$project" --fqdn="$color-$stack.$domain_name" --domain-name="$domain_name"
 
   done
 done

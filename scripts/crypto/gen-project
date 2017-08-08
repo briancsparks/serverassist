@@ -1,0 +1,36 @@
+#!/bin/bash -e
+
+eval "$(cli-shezargs $@)"
+
+#
+# Generate all the keys for a project:
+#
+# * Intermediate cert
+# * Certs for all color/stack combos
+# * Client root cert
+#
+
+[[ -n $project          ]] || die "gp: Need --project="
+[[ -n $domain_name      ]] || die "gp: Need --domain-name="
+[[ -n $test_domain_name ]] || die "gp: Need --test-domain-name="
+
+# Do we need to generate a data-key?
+if ! ls-secrets --keys | egrep "${project}/secrets/deploy/${project}-data-key.json"; then
+  push-data-key --project="$project"
+fi
+
+echo "---------- Generating intermediate cert"
+serverassist-crypto --project="$project" gen-project-int-cert
+
+echo "---------- Generating HQ cert"
+serverassist-crypto --project="$project" gen-fqdn-cert --fqdn="hq.${domain_name}" --domain-name="${domain_name}"
+
+echo "---------- Generating console cert"
+serverassist-crypto --project="$project" gen-fqdn-cert --fqdn="console.${domain_name}" --domain-name="${domain_name}"
+
+echo "---------- color server certs"
+serverassist-crypto --project="$project" gen-project-color-fqdns --domain-name="${domain_name}" --test-domain-name="${test_domain_name}"
+
+echo "---------- Generating root client cert"
+serverassist-crypto --project="$project" gen-project-root-client-cert
+

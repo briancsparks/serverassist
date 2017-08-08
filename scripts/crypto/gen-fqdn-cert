@@ -6,8 +6,9 @@
 
 eval "$(cli-shezargs $@)"
 
-[[ -n $project ]] || die "Must provide --project="
-[[ -n $fqdn    ]] || die "Must provide --fqdn="
+[[ -n $project      ]] || die "gfc: Must provide --project="
+[[ -n $domain_name  ]] || die "gfc: Need --domain-name="
+[[ -n $fqdn         ]] || die "gfc: Must provide --fqdn="
 
 aws s3 ls s3://sa-system-storage/${project}/secrets/deploy/${project}-data-key.json || die "No data-key."
 
@@ -16,20 +17,53 @@ chmod og=rwx ~/stmp
 
 cd ~/stmp
 
+# In Chrome 58, Google started requiring SAN
+#
+# See: http://blog.endpoint.com/2014/10/openssl-csr-with-alternative-names-one.html
+
+# Generate the csr -- Certificate Signing Request
+#openssl req -new -key ${fqdn}.key -out ${fqdn}.csr -subj "$($scripts_dir/subj 'Client Solutions' "${fqdn}")"
+
+cat > csr_details.txt <<-EOF
+[req]
+default_bits = 2048
+prompt = no
+default_md = sha256
+req_extensions = req_ext
+distinguished_name = dn
+
+[ dn ]
+C=US
+ST=California
+L=San Diego
+O=HPI
+OU=Client Solutions
+emailAddress=yoshi.t.munchakoopas@$domain_name
+CN=$fqdn
+
+[ req_ext ]
+subjectAltName = @alt_names
+
+[ alt_names ]
+DNS.1=$fqdn
+EOF
+
+
+
+
 # Generate the key for this servrer
 openssl genrsa -out ${fqdn}.key 2048
 
-# Generate the crt -- Certificate Signing Request
-openssl req -new -key ${fqdn}.key -out ${fqdn}.csr -subj "$($scripts_dir/subj 'Client Solutions' "${fqdn}")"
-
+openssl req -new -key ${fqdn}.key -sha256 -nodes -out ${fqdn}.csr -config <(cat csr_details.txt)
 
 ${scripts_dir}/../pull-secret --project="${project}" ${project}_root_server_ca.key
 ${scripts_dir}/../pull-secret --project="${project}" ${project}_root_server_ca.crt
 
-openssl x509 -req -days 7000 -in ${fqdn}.csr -CA ${project}_root_server_ca.crt -CAkey ${project}_root_server_ca.key -set_serial 01 -out ${fqdn}.crt
+openssl x509 -req -days 375 -in ${fqdn}.csr -CA ${project}_root_server_ca.crt -CAkey ${project}_root_server_ca.key -extfile csr_details.txt -extensions req_ext -set_serial 01 -out ${fqdn}.crt
 
 rm -f ${project}_root_server_ca.key
 rm -f ${project}_root_server_ca.crt
+rm -f csr_details.txt
 
 ${scripts_dir}/../push-secret --project="${project}" ${fqdn}.key
 ${scripts_dir}/../push-secret --project="${project}" ${fqdn}.crt
