@@ -22,53 +22,13 @@ const startResult = _.map(colorTable, function(color, index) { return '-'; });  
 var lib = {};
 
 /**
- *  The user supplied bad arguments. Let them know whats right.
+ *  Shows the routing state for the --project
  */
-var lpad = sg.lpad;
-sg.prepUsage = function() {
-
-  return mkU();
-  function mkU() {
-
-    var options   = {};
-    var descr     = {};
-    var example   = '';
-
-    var u = function(names, example_, descr_) {
-      var arNames = names.split(',');
-      var primary = arNames[0];
-      var key     = sg.toCamelCase(primary);
-
-      descr[key]      = descr_;
-      options[key]    = _.map(arNames, function(name) { return '--'+name; });
-      example         = _.compact([example, '--'+primary+example_]).join(' ');;
-
-      return names;
-    };
-
-    u.sage = function(what, msg, callback_) {
-      var callback = callback_ || function(){};
-
-      process.stderr.write(chalk.red('Bad '+what+' '+msg)+'\n');
-      process.stderr.write('\nUsage:     '+chalk.bold(example)+'\n\n');
-      _.each(_.keys(options), function(key) {
-        var msg = '  '+lpad(key+': ', 16)+lpad(descr[key], 35)+' (as: '+options[key].join(' or ')+')';
-        process.stderr.write(msg+'\n');
-      });
-
-      return callback(null, {});
-      //return callback('EBAD-'+what.toUpperCase(), {ok:false, what: 'Bad '+what});
-    };
-
-    return u;
-  }
-};
-
 const showRouting = lib.showRouting = function(argv, context, callback) {
 
   var   u         = sg.prepUsage();
 
-  const projectId = argvGet(argv, u('project-id,project', '=sa',     'The project to show.'));
+  const projectId = argvGet(argv, u('project-id,project', '=sa',     'The project to show.')) || 'sa';
   const stackName = argvGet(argv, u('stack',              '=test',   'The stack to show.'));
 
   if (!projectId) { return u.sage('project-id', '', callback); }
@@ -102,11 +62,14 @@ const showRouting = lib.showRouting = function(argv, context, callback) {
   });
 };
 
+/**
+ *  Set the routing state for the --project
+ */
 const setRouting = lib.setRouting = function(argv, context, callback) {
 
   var   u         = sg.prepUsage();
 
-  const projectId = argvGet(argv, u('project-id,project', '=sa',        'The project to show.'));
+  const projectId = argvGet(argv, u('project-id,project', '=sa',        'The project to show.')) || 'sa';
   const stack     = argvGet(argv, u('stack',              '=test',      'The stack to show.'));
   const states    = argvGet(argv, u('states',             '=main,next', 'New states to set'));
 
