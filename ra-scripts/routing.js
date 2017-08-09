@@ -115,8 +115,9 @@ const setRouting = lib.setRouting = function(argv, context, callback) {
     var result = {};
 
     return sg.__each(states.split(','), function(state, next, index) {
-      const color = colorTable[index];
+      if (!state) { return next(); }
 
+      const color = colorTable[index];
       return setRouting({projectId,stack,color,state}, context, function(err, newRouting) {
         //var msg = [];
         if (sg.ok(err, newRouting)) {
