@@ -21,11 +21,9 @@ lib.projectInfoForInstance = function(argv, context, callback) {
   const color       = argvGet(argv, 'color');
   const service     = argvGet(argv, 'service');
 
-  if (!stack)     { return sg.die('ENOSTACK', callback, 'projectInfoForInstance'); }
-  if (!color)     { return sg.die('ENOCOLOR', callback, 'projectInfoForInstance'); }
-  if (!service)   { return sg.die('ENOSERVICE', callback, 'projectInfoForInstance'); }
-
-console.error({service,color,stack});
+  if (!stack)     { return sg.fail('ENOSTACK', callback, 'projectInfoForInstance'); }
+  if (!color)     { return sg.fail('ENOCOLOR', callback, 'projectInfoForInstance'); }
+  if (!service)   { return sg.fail('ENOSERVICE', callback, 'projectInfoForInstance'); }
 
   var ipParts = [10,0,0,0];;
   var fqdn    = '';

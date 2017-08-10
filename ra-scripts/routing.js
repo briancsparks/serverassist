@@ -2,11 +2,13 @@
 /**
  *
  */
-//const sg                      = require('sgsg');
-const sg                      = require('../../sgsg');
+const sg                      = require('sgsg');
 const _                       = sg._;
+const raLib                   = sg.include('run-anywhere') || require('run-anywhere');
+const jsaws                   = sg.include('js-aws')       || require('js-aws');
 const MongoClient             = require('mongodb').MongoClient;
 const serverassist            = require('../../serverassist');
+const project                 = require('./project');
 const helpers                 = require('./models/helpers');
 
 const argvGet                 = sg.argvGet;
@@ -20,6 +22,178 @@ const colorIndex  = sg.reduce(colorTable, {}, function(m, color, index) { return
 const startResult = _.map(colorTable, function(color, index) { return '-'; });                                     // So, startResult === ['-', '-', '-', '-']
 
 var lib = {};
+
+/**
+ *  Makes the named instance the main instance.
+ *
+ *  1. Sets routing (set-routing)
+ *  2. Assigns special fqdn if appropriate (like hq on cluster)
+ *
+ *  promoteToMain --stack=cluster --color=blue
+ */
+const promoteToMain = lib.promoteToMain = function() {
+
+  var   u  = sg.prepUsage();
+  const ra = raLib.adapt(arguments, function(argv, context, callback) {
+
+    const setRouting              = ra.wrap(lib.setRouting);
+    const showRouting             = ra.wrap(lib.showRouting);
+    const moveEipForFqdn          = ra.wrap(jsaws.lib2.moveEipForFqdn);
+    const getInstances            = ra.wrap(jsaws.lib2.getInstances);
+    const projectInfoForInstance  = ra.wrap(project.projectInfoForInstance);
+
+    return MongoClient.connect(mongoHost, function(err, db) {
+      if (err) { return sg.die(err, callback, 'promoteToMain.MongoClient.connect'); }
+
+      var   result          = {};
+
+      const stacksDb        = db.collection('stacks');
+      const projectId       = argvGet(argv, u('project-id,project', '=sa',            'The project to show.')) || 'sa';
+      const stack           = argvGet(argv, u('stack',              '=test',          'The stack to show.'));
+      const color           = argvGet(argv, u('color',              '=blue',          'The color that is promoted.'));
+      const namespace       = argvGet(argv, u('namespace',          '=serverassist',  'The namespace for the project.'));
+
+      if (!stack)           { return u.sage('stack', 'Need stack.', callback); }
+      if (!color)           { return u.sage('color', 'Need color.', callback); }
+
+      var routing;
+      var instances;
+      var losingColor;
+      var pathRoute;
+      var fqdn;
+      var webInstLosingMain = [];
+
+      sg.__run([function(next) {
+
+        //
+        //  Promoting teal to main, when it is currently `next`, and blue is main.
+        //
+        //    green    blue    teal   yellow
+        //  [ 'gone', 'main', 'next', 'gone' ] -> [ 'gone', 'prev', 'main', 'gone' ]
+        //
+        //    So, colorIndex.green === 0
+        //    So, colorTable[0] === 'green'
+        //
+
+        // ---------- Get the routing state at the start ----------
+        return showRouting({stack}, (err, routing) => {
+          pathRoute = routing[stack];
+
+          const runState = sg.reduce(pathRoute, {}, (m, state, index) => {
+
+            // Find what state I am in to start
+            if (colorTable[index] === color) {
+              m = sg.kv(m, 'myStartState', state);
+            }
+
+            // Find out who is the main stack at the start
+            if (state === 'main') {
+              m = sg.kv(m, 'startingmain', colorTable[index]);
+            }
+
+            return m;
+          });
+
+          // Remember the color that started as main (they will now be `prev`)
+          losingColor = runState.startingmain;
+
+          return next();
+        });
+
+      // ------------ Move the current `main` aside (change to `prev`) ----------
+      }, function(next) {
+
+        // Move the losing color to the `prev` state
+        const argv2 = sg.extend({projectId}, {stack}, {color: losingColor}, {state: 'prev'});
+        return setRouting(argv2, (err, result_) => {
+          if (sg.ok(err, result_)) {
+            result.losingColor = {color: losingColor, routeChange: result_};
+          }
+          return next();
+        });
+
+      // ------------ Make the new color be the `main` color ----------
+      }, function(next) {
+
+        // Move our color into the main state
+        const argv2 = sg.extend({projectId}, {stack}, {color}, {state: 'main'});
+        return setRouting(argv2, (err, result_) => {
+          if (sg.ok(err, result_)) {
+            result.newMain = {color, routeChange: result_};
+          }
+          return next();
+        });
+
+      // ------------ Determine the new fqdns ----------
+      }, function(next) {
+
+        return projectInfoForInstance({projectId,stack,color, service:'web'}, (err, projectInfo) => {
+          if (sg.ok(err, projectInfo)) {
+            fqdn        = 'hq.'+_.first(projectInfo.uriBase.split('/'));
+            losingFqdn  = projectInfo.fqdn.replace(/^[^.]+[.]/, `${losingColor}-${stack}.`);
+          }
+          return next();
+        });
+
+      // ------------ Find the instances that are making the change ----------
+      }, function(next) {
+
+        return getInstances({}, (err, instances_) => {
+          if (sg.ok(err, instances_)) {
+            instances = instances_;
+          }
+
+          // Loop over the instances; find any that match
+          const webInstances = sg.reduce(instances, {}, (m, instance, instanceId) => {
+            const tags = instance.Tags || {};
+
+            // This is a web instance in the color-stack that lost main
+            if (tags.namespace === namespace && tags.color === losingColor && tags.stack === stack && tags.service === 'web') {
+              webInstLosingMain.push(instanceId);
+            }
+
+            // This is a web instance that will soon be main
+            if (tags.namespace === namespace && tags.color === color && tags.stack === stack && tags.service === 'web') {
+              return sg.kv(m, instanceId, instance);
+            }
+
+            return m;
+          });
+
+          // We must only have one.
+          if (sg.numKeys(webInstance) !== 1) {
+            closeDb(db);
+            return callback(`Need === 1 web-tier instance`);
+          }
+
+          // Move the IP address
+          return moveEipForFqdn({instanceId: sg.firstKey(webInstances), fqdn}, (err, eipStatus) => {
+            return next();
+          });
+        });
+
+      // ------------ Associate the losing fqdn with its new/old color ----------
+      }, function(next) {
+
+        // We must only have one.
+        if (sg.numKeys(webInstLosingMain) !== 1) {
+          closeDb(db);
+          return callback(`Need === 1 web-tier instance`);
+        }
+
+        // Move the loser-fqdn
+        return moveEipForFqdn({instanceId: webInstLosingMain[0], fqdn : losingFqdn}, (err, eipStatus) => {
+          closeDb(db);
+          return next();
+        });
+
+      // ---------- Send back the result ----------
+      }], function() {
+        return callback(err, {webInstLosingMain, info, eipStatus});
+      });
+    });
+  });
+};
 
 /**
  *  Shows the routing state for the --project
