@@ -26,6 +26,26 @@ eval "$(cli-shezargs $@)"
 
 [[ -z $auth_name  ]] && auth_name="$(echo $email | cut -d'@' -f1 | sed 's/[^a-zA-Z0-9]/_/g')"
 
+if [[ -n $self ]]; then
+  echo ''
+  echo "Generate a csr on your workstation:"
+  echo ''
+  echo "openssl req -new -key ~/.ssh/id_rsa -out "${auth_name}_${project}_client.csr" -subj '$($scripts_dir/subj 'Client Solutions' "${email}")'"
+  echo ''
+  echo "Upload it to stmp:"
+  echo ''
+  echo "scpx '${auth_name}_${project}_client.csr' sadevadmin:stmp/"
+  echo ''
+  echo "Then in stmp:"
+  echo ''
+  echo "serverassist-crypto gen-client-cert --project=$project --email=$email --auth-name=$auth_name"
+  echo ''
+
+
+
+  exit 0
+fi
+
 aws s3 ls s3://sa-system-storage/${project}/secrets/deploy/${project}-data-key.json || die "No data-key."
 
 mkdir -p ~/stmp
@@ -59,6 +79,17 @@ rm -f ${project}_root_client_ca.key
 if [[ -f "${auth_name}_${project}_client.key" ]]; then
   # Cannot generate PKCS12 without the key
   openssl pkcs12 -export -clcerts -in "${auth_name}_${project}_client.crt" -inkey "${auth_name}_${project}_client.key" -passout "pass:" -out "${auth_name}_${project}_client.p12"
+else
+  echo ''
+  echo "Cannot generate PKCS12 version of cert without the key.  First, decrypt cert:"
+  echo ''
+  echo "pull-secret --project=${project} --area=clients/${auth_name} ${auth_name}_${project}_client.crt"
+  echo ''
+  echo "Then, on workstation:"
+  echo ''
+  echo "scpx sadevadmin:stmp/${auth_name}_${project}_client.crt ./"
+  echo "openssl pkcs12 -export -clcerts -in '${auth_name}_${project}_client.crt' -inkey '~/.ssh/id_rsa' -passout 'pass:' -out '${auth_name}_${project}_client.p12'"
+  echo ''
 fi
 
 [[ -f "${auth_name}_${project}_client.key" ]] && ${scripts_dir}/../push-secret --project="${project}" --area="clients/${auth_name}" "${auth_name}_${project}_client.key"
