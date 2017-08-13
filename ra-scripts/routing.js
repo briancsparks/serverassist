@@ -51,16 +51,17 @@ const promoteToMain = lib.promoteToMain = function() {
       const projectId       = argvGet(argv, u('project-id,project', '=sa',            'The project to show.')) || 'sa';
       const stack           = argvGet(argv, u('stack',              '=test',          'The stack to show.'));
       const color           = argvGet(argv, u('color',              '=blue',          'The color that is promoted.'));
-      const namespace       = argvGet(argv, u('namespace',          '=serverassist',  'The namespace for the project.'));
+      const namespace       = argvGet(argv, u('namespace',          '=serverassist',  'The namespace for the project.')) || 'serverassist';
 
       if (!stack)           { return u.sage('stack', 'Need stack.', callback); }
       if (!color)           { return u.sage('color', 'Need color.', callback); }
 
       var routing;
       var instances;
-      var losingColor;
-      var pathRoute;
       var fqdn;
+      var myStartState;
+      var origMain;
+      var webInstanceNewMain;
       var webInstLosingMain = [];
 
       sg.__run([function(next) {
@@ -77,37 +78,34 @@ const promoteToMain = lib.promoteToMain = function() {
 
         // ---------- Get the routing state at the start ----------
         return showRouting({stack}, (err, routing) => {
-          pathRoute = routing[stack];
+          if (sg.ok(err, routing)) {
+            result.startingRoutes = routing[stack];
+          }
 
-          const runState = sg.reduce(pathRoute, {}, (m, state, index) => {
+          _.each(routing[stack], (state, index) => {
 
-            // Find what state I am in to start
+            // What is my starting state
             if (colorTable[index] === color) {
-              m = sg.kv(m, 'myStartState', state);
+              myStartState = state;
             }
 
-            // Find out who is the main stack at the start
+            // Which color starts as main
             if (state === 'main') {
-              m = sg.kv(m, 'startingmain', colorTable[index]);
+              origMain = colorTable[index];
             }
-
-            return m;
           });
-
-          // Remember the color that started as main (they will now be `prev`)
-          losingColor = runState.startingmain;
 
           return next();
         });
 
-      // ------------ Move the current `main` aside (change to `prev`) ----------
+      // ------------ Move the current (orig) `main` aside (change to `prev`) ----------
       }, function(next) {
 
-        // Move the losing color to the `prev` state
-        const argv2 = sg.extend({projectId}, {stack}, {color: losingColor}, {state: 'prev'});
+        // Move the orig main to the `prev` state
+        const argv2 = sg.extend({projectId}, {stack}, {color: origMain}, {state: 'prev'});
         return setRouting(argv2, (err, result_) => {
           if (sg.ok(err, result_)) {
-            result.losingColor = {color: losingColor, routeChange: result_};
+            result.origMain = {color: origMain, routeChange: result_};
           }
           return next();
         });
@@ -130,7 +128,8 @@ const promoteToMain = lib.promoteToMain = function() {
         return projectInfoForInstance({projectId,stack,color, service:'web'}, (err, projectInfo) => {
           if (sg.ok(err, projectInfo)) {
             fqdn        = 'hq.'+_.first(projectInfo.uriBase.split('/'));
-            losingFqdn  = projectInfo.fqdn.replace(/^[^.]+[.]/, `${losingColor}-${stack}.`);
+            losingFqdn  = projectInfo.fqdn.replace(/^[^.]+[.]/, `${origMain}-${stack}.`);
+            //result.info = projectInfo;
           }
           return next();
         });
@@ -148,7 +147,7 @@ const promoteToMain = lib.promoteToMain = function() {
             const tags = instance.Tags || {};
 
             // This is a web instance in the color-stack that lost main
-            if (tags.namespace === namespace && tags.color === losingColor && tags.stack === stack && tags.service === 'web') {
+            if (tags.namespace === namespace && tags.color === origMain && tags.stack === stack && tags.service === 'web') {
               webInstLosingMain.push(instanceId);
             }
 
@@ -161,35 +160,53 @@ const promoteToMain = lib.promoteToMain = function() {
           });
 
           // We must only have one.
-          if (sg.numKeys(webInstance) !== 1) {
+          if (sg.numKeys(webInstances) !== 1) {
             closeDb(db);
+            console.error(webInstances);
             return callback(`Need === 1 web-tier instance`);
           }
 
           // Move the IP address
-          return moveEipForFqdn({instanceId: sg.firstKey(webInstances), fqdn}, (err, eipStatus) => {
+          webInstanceNewMain = sg.firstKey(webInstances);
+          return moveEipForFqdn({instanceId: webInstanceNewMain, fqdn}, (err, eipStatus) => {
+            if (sg.ok(err, eipStatus)) {
+              result.moveEip = eipStatus;
+            }
             return next();
           });
         });
 
-      // ------------ Associate the losing fqdn with its new/old color ----------
+      // ------------ Associate the losing fqdn with its color-stack name ----------
       }, function(next) {
 
-        // We must only have one.
-        if (sg.numKeys(webInstLosingMain) !== 1) {
+        // We must have 1 or less
+        if (sg.numKeys(webInstLosingMain) > 1) {
           closeDb(db);
-          return callback(`Need === 1 web-tier instance`);
+          console.error(webInstLosingMain);
+          return callback(`Need <= 1 web-tier instance`);
+        }
+
+        if (sg.numKeys(webInstLosingMain) === 0) {
+          return next();
+        }
+
+        // Do not assign if the 2 instances are the same.
+        if (webInstanceNewMain === webInstLosingMain[0]) {
+          return next();
         }
 
         // Move the loser-fqdn
         return moveEipForFqdn({instanceId: webInstLosingMain[0], fqdn : losingFqdn}, (err, eipStatus) => {
-          closeDb(db);
+          if (sg.ok(err, eipStatus)) {
+            result.loserMoveEip = eipStatus;
+          }
           return next();
         });
 
       // ---------- Send back the result ----------
       }], function() {
-        return callback(err, {webInstLosingMain, info, eipStatus});
+        closeDb(db);
+        return callback(err, result);
       });
     });
   });

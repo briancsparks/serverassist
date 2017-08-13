@@ -1,0 +1,10 @@
+#!/bin/bash -e
+
+orig_args="$@"
+
+eval "$(cli-shezargs $@)"
+
+if ra invoke $scripts_dir/../ra-scripts/routing.js promoteToMain $orig_args > /tmp/promote-to-main-$$.json; then
+  cat /tmp/promote-to-main-$$.json | underscore print --color
+fi
+
