@@ -15,14 +15,13 @@ const myIp                    = serverassist.myIp();
 
 var lib = {};
 
-console.log('loading mount-react');
 
-const main = lib.run = function(argv, context, callback) {
+const main = lib.mount = function(argv, context, callback) {
   const port              = argvGet(argv, 'port');
   const serviceName       = argvGet(argv, 'service-name,name');
 
-  if (!port)            { return sg.die('ENOPORT', callback, 'mount_react.run'); }
-  if (!serviceName)     { return sg.die('ENOSERVICENAME', callback, 'mount_react.run'); }
+  if (!port)            { return sg.die('ENOPORT', callback, 'mount_react.mount'); }
+  if (!serviceName)     { return sg.die('ENOSERVICENAME', callback, 'mount_react.mount'); }
 
   const myServiceLocation = `http://${myIp}:${port}`;
 
@@ -42,7 +41,7 @@ _.each(lib, (value, key) => {
   exports[key] = value;
 });
 
-if (sg.callMain(ARGV, __filename)) {
+if (ARGV.main) {
   main(ARGV, {}, (err, output) => {
     console.log(output);
   });
