@@ -15,7 +15,6 @@ const myIp                    = serverassist.myIp();
 
 var lib = {};
 
-
 const main = lib.mount = function(argv, context, callback) {
   const port              = argvGet(argv, 'port');
   const serviceName       = argvGet(argv, 'service-name,name');
@@ -40,12 +39,5 @@ const main = lib.mount = function(argv, context, callback) {
 _.each(lib, (value, key) => {
   exports[key] = value;
 });
-
-if (ARGV.main) {
-  main(ARGV, {}, (err, output) => {
-    console.log(output);
-  });
-}
-
 
 

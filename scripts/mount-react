@@ -2,6 +2,9 @@
 
 # mount-react ~/dev/mario-sys-viewer --project=sa
 
+echo "Does not work"
+exit
+
 port="7990"
 
 eval "$(cli-shezargs $@)"
@@ -22,7 +25,7 @@ fi
 if [[ -n $dev ]]; then
 
   cd $scripts_dir/..
-  ra invoke ra-scripts/mount-react.js run --port="$port" --name="${project}_console_${app}"
+  ra invoke ra-scripts/mount-react.js mount --port="$port" --name="${project}_console_${app}"
 
   cd $repo
   [[ -d node_modules ]] || yarn install

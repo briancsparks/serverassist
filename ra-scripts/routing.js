@@ -9,11 +9,13 @@ const jsaws                   = sg.include('js-aws')       || require('js-aws');
 const MongoClient             = require('mongodb').MongoClient;
 const serverassist            = require('../../serverassist');
 const project                 = require('./project');
-const helpers                 = require('./models/helpers');
+const modelHelpers            = require('./models/helpers');
+const helpers                 = require('../lib/helpers');
 
 const argvGet                 = sg.argvGet;
+const argvExtract             = sg.argvExtract;
 const mongoHost               = serverassist.mongoHost();
-const closeDb                 = helpers.closeDb;
+const closeDb                 = modelHelpers.closeDb;
 const chalk                   = sg.extlibs.chalk;
 
 const colorList   = 'green,blue,teal,yellow';
@@ -33,8 +35,11 @@ var lib = {};
  */
 const promoteToMain = lib.promoteToMain = function() {
 
-  var   u  = sg.prepUsage();
-  const ra = raLib.adapt(arguments, function(argv, context, callback) {
+  var   result    = {};
+  var   u         = sg.prepUsage();
+
+  const ra = raLib.adapt(arguments, function(argv_, context, callback) {
+    var   argv                    = helpers.fixupArgv(argv_);
 
     const setRouting              = ra.wrap(lib.setRouting);
     const showRouting             = ra.wrap(lib.showRouting);
@@ -42,19 +47,20 @@ const promoteToMain = lib.promoteToMain = function() {
     const getInstances            = ra.wrap(jsaws.lib2.getInstances);
     const projectInfoForInstance  = ra.wrap(project.projectInfoForInstance);
 
+    const projectId               = argvGet(argv, u('project-id,project', '=sa',            'The project to show.')) || 'sa';
+    const stack                   = argvGet(argv, u('stack',              '=test',          'The stack to show.'));
+    const color                   = argvGet(argv, u('color',              '=blue',          'The color that is promoted.'));
+    const namespace               = argvGet(argv, u('namespace',          '=serverassist',  'The namespace for the project.')) || 'serverassist';
+    const verbose                 = argvExtract(argv, 'verbose');
+    const logit                   = verbose ? logit_ : noop;
+
+    if (!stack)                   { return u.sage('stack', 'Need stack.', callback); }
+    if (!color)                   { return u.sage('color', 'Need color.', callback); }
+
     return MongoClient.connect(mongoHost, function(err, db) {
       if (err) { return sg.die(err, callback, 'promoteToMain.MongoClient.connect'); }
 
-      var   result          = {};
-
       const stacksDb        = db.collection('stacks');
-      const projectId       = argvGet(argv, u('project-id,project', '=sa',            'The project to show.')) || 'sa';
-      const stack           = argvGet(argv, u('stack',              '=test',          'The stack to show.'));
-      const color           = argvGet(argv, u('color',              '=blue',          'The color that is promoted.'));
-      const namespace       = argvGet(argv, u('namespace',          '=serverassist',  'The namespace for the project.')) || 'serverassist';
-
-      if (!stack)           { return u.sage('stack', 'Need stack.', callback); }
-      if (!color)           { return u.sage('color', 'Need color.', callback); }
 
       var routing;
       var instances;
@@ -80,6 +86,7 @@ const promoteToMain = lib.promoteToMain = function() {
         return showRouting({stack}, (err, routing) => {
           if (sg.ok(err, routing)) {
             result.startingRoutes = routing[stack];
+            logit(result.startingRoutes);
           }
 
           _.each(routing[stack], (state, index) => {
@@ -106,6 +113,7 @@ const promoteToMain = lib.promoteToMain = function() {
         return setRouting(argv2, (err, result_) => {
           if (sg.ok(err, result_)) {
             result.origMain = {color: origMain, routeChange: result_};
+            logit(result.origMain);
           }
           return next();
         });
@@ -118,9 +126,20 @@ const promoteToMain = lib.promoteToMain = function() {
         return setRouting(argv2, (err, result_) => {
           if (sg.ok(err, result_)) {
             result.newMain = {color, routeChange: result_};
+            logit(result.newMain);
           }
           return next();
         });
+
+      }, function(next) {
+        // The rest is just for moving domain names, like hq
+        if (stack !== 'cluster') {
+          closeDb(db);
+          logit('exiting cuz stack !== cluster');
+          return callback(null, result);
+        }
+
+        return next();
 
       // ------------ Determine the new fqdns ----------
       }, function(next) {
@@ -129,6 +148,7 @@ const promoteToMain = lib.promoteToMain = function() {
           if (sg.ok(err, projectInfo)) {
             fqdn        = 'hq.'+_.first(projectInfo.uriBase.split('/'));
             losingFqdn  = projectInfo.fqdn.replace(/^[^.]+[.]/, `${origMain}-${stack}.`);
+            logit(fqdn, losingFqdn);
             //result.info = projectInfo;
           }
           return next();
@@ -140,6 +160,7 @@ const promoteToMain = lib.promoteToMain = function() {
         return getInstances({}, (err, instances_) => {
           if (sg.ok(err, instances_)) {
             instances = instances_;
+            logit(_.keys(instances));
           }
 
           // Loop over the instances; find any that match
@@ -199,6 +220,7 @@ const promoteToMain = lib.promoteToMain = function() {
         return moveEipForFqdn({instanceId: webInstLosingMain[0], fqdn : losingFqdn}, (err, eipStatus) => {
           if (sg.ok(err, eipStatus)) {
             result.loserMoveEip = eipStatus;
+            logit(result.loserMoveEip);
           }
           return next();
         });
@@ -324,4 +346,9 @@ _.each(lib, (value, key) => {
   exports[key] = value;
 });
 
+function logit_() {
+  console.error.apply(console, arguments);
+}
+
+function noop() {}
 
