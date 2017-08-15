@@ -2,9 +2,6 @@
 
 # mount-react ~/dev/mario-sys-viewer --project=sa
 
-echo "Does not work"
-exit
-
 port="7990"
 
 eval "$(cli-shezargs $@)"
@@ -19,6 +16,12 @@ if [[ -z $app ]]; then
 fi
 
 [[ -z $app      ]] && die "Need --app="
+
+if [[ -z $project ]]; then
+  cd $repo
+  [[ $(cat package.json | jq -r .homepage) =~ mobilewebassist ]] && project="sa"
+fi
+
 [[ -z $project  ]] && die "Need --project="
 
 
@@ -43,5 +46,5 @@ cd build && pm2 start serve -- --port="$port"
 
 
 cd $scripts_dir/..
-pm2 start ra-scripts/mount-react.js -- --main --port="$port" --name="${project}_console_${app}"
+pm2 start lib/mount-react.js -- --port="$port" --name="${project}_console_${app}"
 
