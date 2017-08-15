@@ -14,6 +14,7 @@ const helpers                 = require('../lib/helpers');
 
 const argvGet                 = sg.argvGet;
 const argvExtract             = sg.argvExtract;
+const deref                   = sg.deref;
 const mongoHost               = serverassist.mongoHost();
 const closeDb                 = modelHelpers.closeDb;
 const chalk                   = sg.extlibs.chalk;
@@ -108,7 +109,10 @@ const promoteToMain = lib.promoteToMain = function() {
       // ------------ Move the current (orig) `main` aside (change to `prev`) ----------
       }, function(next) {
 
-        // Move the orig main to the `prev` state
+        // Move the orig main to the `prev` state, if there was one
+
+        if (!origMain) { return next(); }
+
         const argv2 = sg.extend({projectId}, {stack}, {color: origMain}, {state: 'prev'});
         return setRouting(argv2, (err, result_) => {
           if (sg.ok(err, result_)) {
@@ -165,6 +169,8 @@ const promoteToMain = lib.promoteToMain = function() {
 
           // Loop over the instances; find any that match
           const webInstances = sg.reduce(instances, {}, (m, instance, instanceId) => {
+            if ((deref(instance, 'State.Name')||'').toLowerCase() !== 'running')  { return m; }
+
             const tags = instance.Tags || {};
 
             // This is a web instance in the color-stack that lost main
@@ -313,10 +319,15 @@ const setRouting = lib.setRouting = function(argv, context, callback) {
     });
   }
 
-  var   state     = argvGet(argv, 'state');
-  const color     = argvGet(argv, 'color');
+  var   state     = argvGet(argv, u('state', '=main',  'The state to set'));
+  const color     = argvGet(argv, u('color', '=green', 'The color to set'));
 
-  if (!stack || !color || sg.isnt(state) || !projectId) { return u.sage('options.', `Need all of 'stack' (${stack}), 'color' (${color}) 'state' (${state}) 'project-id' (${projectId})`, callback); }
+  if (!stack)           { return u.sage('stack',      `Need all of 'stack' (${stack}), 'color' (${color}) 'state' (${state}) 'project-id' (${projectId})`, callback); }
+  if (!color)           { return u.sage('color',      `Need all of 'stack' (${stack}), 'color' (${color}) 'state' (${state}) 'project-id' (${projectId})`, callback); }
+  if (sg.isnt(state))   { return u.sage('state',      `Need all of 'stack' (${stack}), 'color' (${color}) 'state' (${state}) 'project-id' (${projectId})`, callback); }
+  if (!projectId)       { return u.sage('project-id', `Need all of 'stack' (${stack}), 'color' (${color}) 'state' (${state}) 'project-id' (${projectId})`, callback); }
+
+//  if (!stack || !color || sg.isnt(state) || !projectId) { return u.sage('options.', `Need all of 'stack' (${stack}), 'color' (${color}) 'state' (${state}) 'project-id' (${projectId})`, callback); }
 
   state = state || 'gone';
 
