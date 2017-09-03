@@ -50,8 +50,8 @@ echo "Launching $repo (as $project $app) with serve --port=$port"
 cd $repo
 [[ -d node_modules ]] || yarn install
 yarn run build
-cd build && pm2 start serve -- --port="$port"
+cd build && pm2 start serve --name "${app}-serve" -- --port="$port"
 
 cd $scripts_dir/..
-pm2 start lib/mount-react.js -- --port="$port" --name="${project}_console_${app}"
+pm2 start lib/mount-react.js --name "${app}-mount" -- --port="$port" --name="${project}_console_${app}"
 
