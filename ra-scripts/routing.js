@@ -243,7 +243,8 @@ const promoteToMain = lib.promoteToMain = function() {
 /**
  *  Shows the routing state for the --project
  */
-const showRouting = lib.showRouting = function(argv, context, callback) {
+const showRouting = lib.showRouting = function(argv_, context, callback) {
+  var   argv      = helpers.fixupArgv(argv_);
 
   var   u         = sg.prepUsage();
 
@@ -284,7 +285,8 @@ const showRouting = lib.showRouting = function(argv, context, callback) {
 /**
  *  Set the routing state for the --project
  */
-const setRouting = lib.setRouting = function(argv, context, callback) {
+const setRouting = lib.setRouting = function(argv_, context, callback) {
+  var   argv      = helpers.fixupArgv(argv_);
 
   var   u         = sg.prepUsage();
 
@@ -301,16 +303,9 @@ const setRouting = lib.setRouting = function(argv, context, callback) {
 
       const color = colorTable[index];
       return setRouting({projectId,stack,color,state}, context, function(err, newRouting) {
-        //var msg = [];
         if (sg.ok(err, newRouting)) {
-          //msg.push(err);
-          //msg.push({startResult:sg.deepCopy(result || {})});
-          //msg.push({routing:sg.deepCopy(newRouting)});
           result = sg.extend(result || {}, newRouting);
-
-          //msg.push({newResult:sg.deepCopy(result)});
         }
-        //console.error(`For ${state}`, sg.inspect(msg));
 
         return next();
       });
@@ -326,8 +321,6 @@ const setRouting = lib.setRouting = function(argv, context, callback) {
   if (!color)           { return u.sage('color',      `Need all of 'stack' (${stack}), 'color' (${color}) 'state' (${state}) 'project-id' (${projectId})`, callback); }
   if (sg.isnt(state))   { return u.sage('state',      `Need all of 'stack' (${stack}), 'color' (${color}) 'state' (${state}) 'project-id' (${projectId})`, callback); }
   if (!projectId)       { return u.sage('project-id', `Need all of 'stack' (${stack}), 'color' (${color}) 'state' (${state}) 'project-id' (${projectId})`, callback); }
-
-//  if (!stack || !color || sg.isnt(state) || !projectId) { return u.sage('options.', `Need all of 'stack' (${stack}), 'color' (${color}) 'state' (${state}) 'project-id' (${projectId})`, callback); }
 
   state = state || 'gone';
 
