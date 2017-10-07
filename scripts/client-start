@@ -1,0 +1,13 @@
+#!/bin/bash -e
+
+eval "$(cli-shezargs $@)"
+
+project_id="$1"
+project_id_up="$(echo $project_id | tr 'a-z' 'A-Z')"
+
+if [[ -n $rsvr ]]; then
+  search="?rsvr=${rsvr}"
+fi
+
+curl -sk "https://hq.mobilewebassist.net/${project_id}/clientStart${search}" -d "{\"version\":1,\"partnerId\":\"HP_${project_id_up}_SERVICE\",\"clientId\":\"marioyoshipeach999\",\"sessionId\":\"marioyoshipeach999-3456\"}"
+
