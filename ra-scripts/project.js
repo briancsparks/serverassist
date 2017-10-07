@@ -9,7 +9,6 @@ const stackModel              = require('./models/stack');
 const helpers                 = require('../lib/helpers');
 
 const argvGet                 = sg.argvGet;
-const domainNameForBaseUri    = helpers.domainNameForBaseUri;
 
 var lib = {};
 
@@ -42,7 +41,7 @@ lib.projectInfoForInstance = function(argv, context, callback) {
     return stackModel.findStack({projectId,color,stack}, context, function(err, stack_) {
       if (err)  { return sg.die(err, callback, 'projectInfo.findStack'); }
 
-      result  = sg.extend(result, _.omit(stack_, '_id'));
+      result  = sg.extend(_.omit(stack_, '_id'), result);
 
       if (service !== 'web') {
         delete result.fqdn;
