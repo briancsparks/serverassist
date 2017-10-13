@@ -251,7 +251,8 @@ const showRouting = lib.showRouting = function(argv_, context, callback) {
   const projectId = argvGet(argv, u('project-id,project', '=sa',     'The project to show.')) || 'sa';
   const stackName = argvGet(argv, u('stack',              '=test',   'The stack to show.'));
 
-  if (!projectId) { return u.sage('project-id', '', callback); }
+  if (argvGet(argv, 'help'))    { return u.sage(null, '', callback); }
+  if (!projectId)               { return u.sage('project-id', '', callback); }
 
   return MongoClient.connect(mongoHost, function(err, db) {
     if (err) { return sg.die(err, callback, 'showRouting.MongoClient.connect'); }
