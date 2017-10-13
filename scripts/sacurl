@@ -1,0 +1,8 @@
+#!/bin/bash -e
+
+username="$USER"
+client_cert="$HOME/.ssh/keys/serverassist/client-certs/${username}_mobilewebassist_client.pem"
+server_cert="$HOME/.ssh/keys/serverassist/mobilewebassist_root_server_ca.crt"
+
+curl --cert "$client_cert" --cacert "$server_cert" $@
+
