@@ -12,10 +12,10 @@ eval "$(cli-shezargs $@)"
 
 aws s3 ls s3://sa-system-storage/${project}/secrets/deploy/${project}-data-key.json || die "No data-key."
 
-mkdir -p ~/stmp
-chmod og=rwx ~/stmp
+[[ -z $pid ]] && export pid="$$"
+work_dir="$(${scripts_dir}/../make-crypto-working-dir $pid)"
+cd $work_dir
 
-cd ~/stmp
 
 # In Chrome 58, Google started requiring SAN
 #
@@ -68,6 +68,9 @@ rm -f csr_details.txt
 ${scripts_dir}/../push-secret --project="${project}" ${fqdn}.key
 ${scripts_dir}/../push-secret --project="${project}" ${fqdn}.crt
 ${scripts_dir}/../push-secret --project="${project}" ${fqdn}.csr
+
+cd $start_dir
+[[ -d $work_dir ]] && rmdir $work_dir
 
 
 

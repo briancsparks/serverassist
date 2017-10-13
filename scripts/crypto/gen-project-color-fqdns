@@ -6,6 +6,8 @@ eval "$(cli-shezargs $@)"
 [[ -n $domain_name      ]] || die "gpcf: Need --domain-name="
 [[ -n $test_domain_name ]] || die "gpcf: Need --test-domain-name="
 
+[[ -z $pid ]] && export pid="$$"
+
 for stack in cluster test; do
   for color in blue green teal yellow; do
 

@@ -14,6 +14,8 @@ eval "$(cli-shezargs $@)"
 [[ -n $domain_name      ]] || die "gp: Need --domain-name="
 [[ -n $test_domain_name ]] || die "gp: Need --test-domain-name="
 
+[[ -z $pid ]] && export pid="$$"
+
 # Do we need to generate a data-key?
 if ! ls-secrets --keys | egrep "${project}/secrets/deploy/${project}-data-key.json"; then
   push-data-key --project="$project"

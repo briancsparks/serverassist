@@ -10,14 +10,16 @@ eval "$(cli-shezargs $@)"
 
 aws s3 ls s3://sa-system-storage/${project}/secrets/deploy/${project}-data-key.json || die "No data-key."
 
-mkdir -p ~/stmp
-chmod og=rwx ~/stmp
-
-cd ~/stmp
+[[ -z $pid ]] && export pid="$$"
+work_dir="$(${scripts_dir}/../make-crypto-working-dir $pid)"
+cd $work_dir
 
 openssl genrsa -out ${project}_root_client_ca.key 4096
 openssl req -new -x509 -days 7399 -key ${project}_root_client_ca.key -out ${project}_root_client_ca.crt -subj "$($scripts_dir/subj 'Client Solutions' "SA Project ${project} Root Client CA")"
 
 ${scripts_dir}/../push-secret --project="${project}" ${project}_root_client_ca.key
 ${scripts_dir}/../push-secret --project="${project}" ${project}_root_client_ca.crt
+
+cd $start_dir
+[[ -d $work_dir ]] && rmdir $work_dir
 

@@ -1,0 +1,10 @@
+#!/bin/bash
+
+work_dir="$HOME/stmp/crypto-working-dir-$1"
+
+mkdir -p $work_dir
+chmod og=rwx "$HOME/stmp"
+chmod og=rwx $work_dir
+
+echo $work_dir
+
