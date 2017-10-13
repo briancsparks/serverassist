@@ -2,12 +2,33 @@
 
 eval "$(cli-shezargs $@)"
 
-project_id="$1"
+die() {
+  echo "$@"
+  echo "Usage: $(basename $0) <project-id>"
+  echo "          --client-id=abc       [marioyoshipeach]"
+  echo "          --num=999             adds num after client-id"
+  exit 1
+}
+
+[[ -z $project_id ]] && project_id="$1"
+
+[[ -n $project_id ]] || die "Need project-id"
+
 project_id_up="$(echo $project_id | tr 'a-z' 'A-Z')"
 
 if [[ -n $rsvr ]]; then
   search="?rsvr=${rsvr}"
 fi
 
-curl -sk "https://hq.mobilewebassist.net/${project_id}/clientStart${search}" -d "{\"version\":1,\"partnerId\":\"HP_${project_id_up}_SERVICE\",\"clientId\":\"marioyoshipeach999\",\"sessionId\":\"marioyoshipeach999-3456\"}"
+if [[ -n $client_id ]]; then
+  client_id_="$client_id"
+else
+  client_id_="marioyoshipeach"
+fi
+
+if [[ -n $num ]]; then
+  client_id_="${client_id_}${num}"
+fi
+
+curl -sk "https://hq.mobilewebassist.net/${project_id}/clientStart${search}" -d "{\"version\":1,\"partnerId\":\"HP_${project_id_up}_SERVICE\",\"clientId\":\"${client_id_}\",\"sessionId\":\"${client_id_}-3456\"}"
 
