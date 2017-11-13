@@ -5,6 +5,6 @@ orig_args="$@"
 eval "$(cli-shezargs $@)"
 
 if ra invoke $scripts_dir/../ra-scripts/routing.js showRouting $orig_args > /tmp/show-routing-$$.json; then
-  cat /tmp/show-routing-$$.json | underscore print --color
+  cat /tmp/show-routing-$$.json
 fi
 
