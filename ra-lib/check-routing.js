@@ -8,7 +8,6 @@ const raLib                   = sg.include('run-anywhere') || require('run-anywh
 const serverassist            = require('../serverassist');
 const request                 = sg.extlibs.superagent;
 const t                       = require('tap');
-const routing                 = require('../ra-scripts/routing');
 const MongoClient             = require('mongodb').MongoClient;
 const modelHelpers            = require('../ra-scripts/models/helpers');
 
@@ -23,7 +22,6 @@ const main                    = "main";
 const argvGet                 = sg.argvGet;
 
 
-var   clientStartUrl = `https://hq.mobilewebprint.net/sap/api/v12/clientStart?branch=gen3&clientId=${clientId}`;
 const body = {
   "clientId": clientId,
   "provider": "HP_MWP_SERVICE",
@@ -45,12 +43,20 @@ lib.checkRouting = function() {
   var   u               = sg.prepUsage();
 
   const ra = raLib.adapt(arguments, (argv, context, callback) => {
-    const showRouting   = ra.wrap(routing.showRouting);
+
+    const db              = argvGet(argv, 'db')                   || mongoHost;
+    const prefix          = argvGet(argv, 'http-prefix,prefix')   || 'https://hq.mobilewebprint.net/sap/api/v12';
+    const projectId       = argvGet(argv, 'project-id,project');
+    const insecure        = argvGet(argv, 'insecure,k');
+
+    const queryRoot       = projectId?  {projectId} : {};
+
+    var   clientStartUrl  = `${prefix}/clientStart?branch=gen3&clientId=${clientId}`;
 
     var pubMainColor, pubNextColor, testMainColor, testNextColor;
 
-    const myMongoHost = 'mongodb://10.10.21.229:27017/serverassist';
-    return MongoClient.connect(myMongoHost, function(err, db) {
+    t.comment('Using '+db+' for mongo host');
+    return MongoClient.connect(db, function(err, db) {
       t.assertNot(err, "There should not be an error opening the DB");
 
       const stacksDb  = db.collection('stacks');
@@ -60,8 +66,9 @@ lib.checkRouting = function() {
 
       }, function(result, next) {
 
-        var query = {stack:'pub', state:'main'};
+        var query = _.extend({stack:'pub', state:'main'}, queryRoot);;
 
+        t.comment('querying for pub main', query);
         return stacksDb.find(query, {_id:0}).toArray(function(err, stacks) {
           t.assertNot(err, "There should not be an error querying the DB for pub-main");
           t.equals(stacks.length, 1, "There should be exactly one main stack on pub.");
@@ -76,7 +83,7 @@ lib.checkRouting = function() {
 
       }, function(result, next) {
 
-        var query = {stack:'pub', state:'next'};
+        var query = _.extend({stack:'pub', state:'next'}, queryRoot);;
 
         return stacksDb.find(query, {_id:0}).toArray(function(err, stacks) {
           t.assertNot(err, "There should not be an error querying the DB for pub-next (staging)");

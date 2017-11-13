@@ -4,11 +4,7 @@ orig_args="$@"
 
 eval "$(cli-shezargs $@)"
 
-# Did the caller pass in an IP for the DB?
-if [[ -n $db ]]; then
-  . <(setupenv '10.10.21.229' '10.10.21.4')
-fi
-
+# mongodb://10.10.21.229:27017/serverassist
 ra invoke $scripts_dir/../ra-lib/check-routing.js checkRouting $orig_args
 
 
