@@ -1,0 +1,19 @@
+#!/bin/bash -e
+
+eval "$(cli-shezargs $@)"
+
+[[ -z $url ]] && url="$1"
+
+# https://test.secureprint.api.hp.com/sap/green/api/v12  -->  http://green-test.mobiledevprint.net/sap/api/v12
+
+color="$(echo $url | egrep -o '(green|blue|teal|yellow)')"
+is_test="$(echo $url | egrep -o 'test')"
+
+if [[ -n $is_test ]]; then
+  url="http://${color}-test.mobiledevprint.net/sap/api/v12"
+else
+  url="http://${color}-pub.mobilewebprint.net/sap/api/v12"
+fi
+
+echo $url
+

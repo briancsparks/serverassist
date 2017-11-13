@@ -1,0 +1,9 @@
+#!/bin/bash -e
+
+orig_args="$@"
+
+eval "$(cli-shezargs $@)"
+
+ra invoke $scripts_dir/../ra-scripts/check-routing.js checkRouting $orig_args
+
+
