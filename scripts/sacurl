@@ -11,8 +11,5 @@ if ! [[ -f $server_cert ]]; then
   server_cert="/tmp/certs/mobilewebassist_root_server_ca.crt"
 fi
 
-stat $client_cert
-stat $server_cert
-
 curl --cert "$client_cert" --cacert "$server_cert" $@
 
