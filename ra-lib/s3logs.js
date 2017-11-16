@@ -16,11 +16,10 @@ var   s3                      = new AWS.S3();
 var lib = {};
 
 
-var sgX=require('../../sg/sg.js');
 
 lib.bucketSizeAnalysis = function(argv, context, callback) {
 
-  var   u             = sgX.prepUsage();
+  var   u             = sg.prepUsage();
   var   argv2         = {};
   const bucket        = argvGet(argv, u('bucket',  'bname',      'The name of the bucket.'));
   const prefix        = argvGet(argv, u('prefix',  'kname',      'The prefix where to start.'));
@@ -139,11 +138,11 @@ lib.listS3Objects = function(argv_, context, callback) {
 
       var data  = [_.omit(sg.deepCopy(data_), 'IsTruncated', 'MaxKeys', 'ContinuationToken', 'NextContinuationToken', 'StartAfter')];
       if (data[0].CommonPrefixes && data[0].CommonPrefixes.length) {
-        data    = sgX.promote(data, 'CommonPrefixes');
+        data    = sg.promote(data, 'CommonPrefixes');
       }
 
       if (data[0].Contents && data[0].Contents.length) {
-        data    = sgX.promote(data, 'Contents');
+        data    = sg.promote(data, 'Contents');
       }
 
       result    = [...result, ...data];
