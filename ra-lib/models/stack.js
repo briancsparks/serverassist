@@ -62,7 +62,7 @@ lib.promoteToMain = function() {
         return stacksDb.find(query, {_id:0}).toArray(function(err, stacks) {
           if (!sg.ok(err, stacks))    { return sg.die(err, callback, 'promoteToMain.queryForMain'); }
           if (stacks.length !== 1) {
-            return callback({msg:"The query needed to match exactly one, but it matched "+stacks.length});
+            return callback({msg:"The query needed to match exactly one, but it matched "+stacks.length+' query: ',query});
           }
 
           origState = stacks[0].state;
