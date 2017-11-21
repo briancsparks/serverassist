@@ -29,20 +29,21 @@ fi
 # ---------- Done processing the args ----------
 
 
-# ---------- Run a development server? ----------
-if [[ -n $dev ]]; then
+## ---------- Run a development server? ----------
+#if [[ -n $dev ]]; then
+#
+#  # NOTE: does not really work right.
+#
+#  cd $scripts_dir/..
+#  ra invoke ra-scripts/mount-react.js mount --port="$port" --name="${project}_console_${app}"
+#
+#  cd $repo
+#  [[ -d node_modules ]] || yarn install
+#  yarn start
+#
+#  kill %1
+#fi
 
-  # NOTE: does not really work right.
-
-  cd $scripts_dir/..
-  ra invoke ra-scripts/mount-react.js mount --port="$port" --name="${project}_console_${app}"
-
-  cd $repo
-  [[ -d node_modules ]] || yarn install
-  yarn start
-
-  kill %1
-fi
 
 # ---------- Run a Node-based static file server `serve` ----------
 echo "Launching $repo (as $project $app) with serve --port=$port"
@@ -50,8 +51,14 @@ echo "Launching $repo (as $project $app) with serve --port=$port"
 cd $repo
 [[ -d node_modules ]] || yarn install
 yarn run build
-cd build && pm2 start serve --name "${app}-serve" -- --port="$port"
+(cd build && pm2 start serve --name "${app}-serve" -- --port="$port")
 
-cd $scripts_dir/..
-pm2 start lib/mount-react.js --name "${app}-mount" -- --port="$port" --name="${project}_console_${app}"
+if [[ -f package.json ]]; then
+  pm2 start `fn ~/dev 'lib/mount-react\.js$'` --name "mount-${app}" -- package.json --port="$port"
+
+else
+  cd $scripts_dir/..
+  pm2 start lib/mount-react.js --name "${app}-mount" -- --port="$port" --name="${project}_console_${app}"
+
+fi
 
