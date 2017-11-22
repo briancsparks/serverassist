@@ -15,6 +15,7 @@ repo="$1"
 if [[ -z $app ]]; then
   cd $repo
   app="$(basename `cat package.json | jq -r .homepage`)"
+  cd
 fi
 
 [[ -z $app      ]] && die "Need --app="
@@ -22,6 +23,7 @@ fi
 if [[ -z $project ]]; then
   cd $repo
   [[ $(cat package.json | jq -r .homepage) =~ mobilewebassist ]] && project="sa"
+  cd
 fi
 
 [[ -z $project  ]] && die "Need --project="
@@ -29,36 +31,34 @@ fi
 # ---------- Done processing the args ----------
 
 
-## ---------- Run a development server? ----------
-#if [[ -n $dev ]]; then
-#
-#  # NOTE: does not really work right.
-#
-#  cd $scripts_dir/..
-#  ra invoke ra-scripts/mount-react.js mount --port="$port" --name="${project}_console_${app}"
-#
-#  cd $repo
-#  [[ -d node_modules ]] || yarn install
-#  yarn start
-#
-#  kill %1
-#fi
-
-
-# ---------- Run a Node-based static file server `serve` ----------
-echo "Launching $repo (as $project $app) with serve --port=$port"
-
+# ---------- Start helper js-module to register the app into the js-cluster ----------
 cd $repo
-[[ -d node_modules ]] || yarn install
-yarn run build
-(cd build && pm2 start serve --name "${app}-serve" -- --port="$port")
-
 if [[ -f package.json ]]; then
   pm2 start `fn ~/dev 'lib/mount-react\.js$'` --name "mount-${app}" -- package.json --port="$port"
 
 else
   cd $scripts_dir/..
   pm2 start lib/mount-react.js --name "${app}-mount" -- --port="$port" --name="${project}_console_${app}"
+
+fi
+
+# ---------- Run a development server? ----------
+if [[ -n $dev ]]; then
+
+  echo "You must start the development server:"
+  echo "  cd $repo"
+  echo "  export PORT=$port"
+  echo "  yarn start"
+
+else
+
+  # ---------- Run a Node-based static file server `serve` ----------
+  echo "Launching $repo (as $project $app) with serve --port=$port"
+
+  cd $repo
+  [[ -d node_modules ]] || yarn install
+  yarn run build
+  (cd build && pm2 start serve --name "${app}-serve" -- --port="$port")
 
 fi
 
