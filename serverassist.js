@@ -22,6 +22,11 @@ _.each(require('./lib/sa-module'), (value, key) => {
   lib[key] = value;
 });
 
+// ----- Bring in the reverse proxy -----
+_.each(require('./lib/rev-proxy'), (value, key) => {
+  lib[key] = value;
+});
+
 // ----- Bring in helpers for the server-assist-server module -----
 _.each(require('./lib/sa-server'), (value, key) => {
   lib.server[key] = value;
