@@ -1,6 +1,6 @@
 {
   "name": "serverassist",
-  "version": "0.1.23",
+  "version": "0.1.24",
   "description": "SeverAssist",
   "main": "serverassist.js",
   "scripts": {
