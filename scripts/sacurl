@@ -1,7 +1,6 @@
 #!/bin/bash -e
 
-username="$USER"
-client_cert="$HOME/.ssh/keys/serverassist/client-certs/${username}_mobilewebassist_client.pem"
+client_cert="$HOME/.ssh/keys/serverassist/client-certs/${USER}_mobilewebassist_client.pem"
 if ! [[ -f $client_cert ]]; then
   client_cert="/tmp/certs/userx_mobilewebassist_client.pem"
 fi
@@ -12,4 +11,12 @@ if ! [[ -f $server_cert ]]; then
 fi
 
 curl --cert "$client_cert" --cacert "$server_cert" $@
+exit $?
+
+
+# This is how you use openssl like telnet to the fqdn
+export client_cert="$HOME/.ssh/keys/serverassist/client-certs/${USER}_mobilewebassist_client.pem"
+export server_cert="$HOME/.ssh/keys/serverassist/mobilewebassist_root_server_ca.crt"
+
+openssl s_client -CAfile "${server_cert}" -cert "${client_cert}" -connect fqdn:443
 
