@@ -17,7 +17,7 @@ removedir() {
 cd /home/scotty/stmp
 
 find . -type f | while read file; do
-  if [ `stat --format=%Y $file` -le $(( `date +%s` - (3*60) )) ]; then
+  if [ `stat --format=%Y $file` -le $(( `date +%s` - (20*60) )) ]; then
     removefile "$file"
   else
     echo "$file is not old enouth"
@@ -27,7 +27,7 @@ done
 # Now do dirs
 find . -type d | while read dir; do
   if [[ $dir != . && $dir != .. ]]; then
-    if [ `stat --format=%Y $dir` -le $(( `date +%s` - (3*60) )) ]; then
+    if [ `stat --format=%Y $dir` -le $(( `date +%s` - (20*60) )) ]; then
       removedir "$dir"
     else
       echo "$dir is not old enouth"
