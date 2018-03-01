@@ -10,7 +10,7 @@ if ! [[ -f $server_cert ]]; then
   server_cert="/tmp/certs/mobilewebassist_root_server_ca.crt"
 fi
 
-curl --cert "$client_cert" --cacert "$server_cert" $@
+curl --cert "$client_cert" --cacert "$server_cert" "$@"
 exit $?
 
 
